@@ -1,23 +1,35 @@
 ##################################################################################################
-
-# Deploys four SQL Server performance condition alerts to groups of SQL Server machines:
-
-# (1) SQL Server On-premise machines 
-#           OR
-# (2) SQL Server Virtual Machines
-
+#
+# Deploys SQL Server performance alerts to multiple SQL Server machines:
+#
+#   (1) Percent of log used aler
+#   (2) Number of deadlocks per second alert
+#   (3) Amount of free memory (KB) alert
+#   (4) Avg wait time (ms) alert
+#
+# Can deploy to these types of machines:
+#
+#   (1) SQL Server On-premise machines OR
+#   (2) SQL Server Virtual Machines
+#
 # Do not deploy to:
-# (1) Azure SQL Database (Azure cloud instances)
-# (1) Azure Managed Instances (Azure cloud instances)
-
+#
+#   (1) Azure SQL Database (Azure cloud instances)
+#   (2) Azure Managed Instances (Azure cloud instances)
+#
 ##################################################################################################
+
+# Store login credentials:
+$SQLAuthUserName = "********"
+$SQLAuthUserPassword = "********"
 
 # Create list of SQL Server machines:
 $SQLServerMachines = @(
     [PSCustomObject]@{SQLServerIP = '20.246.47.35'}
 )
 
-foreach ($SQLServerMachine in $SQLServerMachines) {
+# Loop through list of SQL Server machines and create the alerts on each one:
+foreach ($SQLServer in $SQLServerMachines) {
 
     Write-Output $SQLServerMachine.SQLServerIP
 
@@ -32,14 +44,11 @@ foreach ($SQLServerMachine in $SQLServerMachines) {
 		    @performance_condition=N'Databases|Percent Log Used|_Total|>|80', 
 		    @job_id=N'00000000-0000-0000-0000-000000000000'"
 
-    try {
-    Invoke-Sqlcmd -ServerInstance "20.246.47.35" -Username "ljokhan" -Password "NissanAltima2013#" -Query $SQLCode_DB_PercentLogUsed
-    }
-    catch {
-    Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    try { Invoke-Sqlcmd -ServerInstance $SQLServer.SQLServerIP -Username $SQLAuthUserName -Password $SQLAuthUserPassword `
+            -Query $SQLCode_DB_PercentLogUsed }
+    catch { Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red }
 
-    # Create alert for % databases log used:
+    # Create alert for # deadlocks per second:
     $SQLCode_Locks_DeadlocksPerSec = "EXEC msdb.dbo.sp_add_alert @name=N'Locks-NumberOfDeadlocks/sec', 
 		    @message_id=0, 
 		    @severity=0, 
@@ -50,12 +59,9 @@ foreach ($SQLServerMachine in $SQLServerMachines) {
 		    @performance_condition=N'Locks|Number of Deadlocks/sec|_Total|>|0', 
 		    @job_id=N'00000000-0000-0000-0000-000000000000'"
 
-    try {
-    Invoke-Sqlcmd -ServerInstance "20.246.47.35" -Username "ljokhan" -Password "NissanAltima2013#" -Query $SQLCode_Locks_DeadlocksPerSec
-    }
-    catch {
-    Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    try { Invoke-Sqlcmd -ServerInstance $SQLServer.SQLServerIP -Username $SQLAuthUserName -Password $SQLAuthUserPassword `
+            -Query $SQLCode_Locks_DeadlocksPerSec }
+    catch { Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red }
 
     # Create alert for free memory:
     $SQLCode_MemoryManager_FreeMemory = "EXEC msdb.dbo.sp_add_alert @name=N'MemoryManager-FreeMemory', 
@@ -68,12 +74,9 @@ foreach ($SQLServerMachine in $SQLServerMachines) {
 		    @performance_condition=N'Memory Manager|Free Memory (KB)||<|500000000', 
 		    @job_id=N'00000000-0000-0000-0000-000000000000'"
 
-    try {
-    Invoke-Sqlcmd -ServerInstance "20.246.47.35" -Username "ljokhan" -Password "NissanAltima2013#" -Query $SQLCode_MemoryManager_FreeMemory
-    }
-    catch {
-    Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    try { Invoke-Sqlcmd -ServerInstance $SQLServer.SQLServerIP -Username $SQLAuthUserName -Password $SQLAuthUserPassword `
+            -Query $SQLCode_MemoryManager_FreeMemory }
+    catch { Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red }
 
     # Create alert for database % log used:
     $SQLCode_Locks_AvgWaitTime = "EXEC msdb.dbo.sp_add_alert @name=N'Locks-AvgWaitTime', 
@@ -86,10 +89,7 @@ foreach ($SQLServerMachine in $SQLServerMachines) {
 		    @performance_condition=N'Locks|Average Wait Time (ms)|_Total|>|1000', 
 		    @job_id=N'00000000-0000-0000-0000-000000000000'"
 
-    try {
-    Invoke-Sqlcmd -ServerInstance "20.246.47.35" -Username "ljokhan" -Password "NissanAltima2013#" -Query $SQLCode_Locks_AvgWaitTime
-    }
-    catch {
-    Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    try { Invoke-Sqlcmd -ServerInstance $SQLServer.SQLServerIP -Username $SQLAuthUserName -Password $SQLAuthUserPassword `
+            -Query $SQLCode_Locks_AvgWaitTime }
+    catch { Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red }
 }
