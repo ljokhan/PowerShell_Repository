@@ -1,11 +1,11 @@
 ###########################################################################################################################
 #
-# Automated Disaster Recovery Testing
+# Automated SQL Server Database Disaster Recovery Testing
 #
 # Many organizations conduct Disaster Recovery testing quarterly, semi-annually or annually. This schedule won't catch
 # database corruption in backups which could lead to potential data loss if backups are needed. This script helps mitigate 
-# this by automating the restore and database checks on a weekly basis within the Disaster Recovery environment...and 
-# automatically notifies I.T. of the result. This ensures the backups are free from corruption.
+# this by automating the restore and database checks on a weekly basis within the Disaster Recovery environment. It 
+# also notifies I.T. if the most recent backup has data corruption.
 #
 ###########################################################################################################################
 
@@ -15,14 +15,14 @@ Clear-Host
 $SQLServerBackupFolder = "C:\Microsoft SQL Server Backups"
 $DRSQLServerMachine = 'LJACER'
 $DRSQLServerUsername = "DisasterRecoveryUser"
-$DRSQLServerPwd = "ILoveDisasterRecovery#"
+$DRSQLServerPwd = "****************"
 $DRLog = "C:\Users\Public\DRTest.log"
 $ErrorOccured = 0 # Intialize error flag to "0"
 
 # If previous DR Log exists, delete it:
 Remove-Item -Path $DRLog -Force
 
-# Add timestamp to DR Log:
+# Create DR log and add timestamp:
 Get-Date >> $DRLog
 "Automated SQL Server Disaster Recovery testing...`r`n" >> $DRLog
 
@@ -44,7 +44,7 @@ try {
 
     # Perform restore of latest full backup:
     Invoke-Sqlcmd -ServerInstance $DRSQLServerMachine -Username $DRSQLServerUsername -Password $DRSQLServerPwd `
-    -TrustServerCertificate  -QueryTimeout 900 -Query $SQL -Verbose *>> $DRLog  
+    -TrustServerCertificate -QueryTimeout 900 -Query $SQL -Verbose *>> $DRLog  
 }
 catch {
     # Log error:
@@ -61,7 +61,7 @@ if ($ErrorOccured -eq 0) {
     # Run DBCC to check for any corruption:
     try {
         # Update log:
-        "Restore successful. Performing DBCC check in disaster recovery site...`r`n" >> $DRLog
+        "Performing DBCC check in disaster recovery site...`r`n" >> $DRLog
 
         Invoke-Sqlcmd -ServerInstance $DRSQLServerMachine -Username $DRSQLServerUsername -Password $DRSQLServerPwd `
         -TrustServerCertificate -QueryTimeout 900 -Query $SQL -Verbose *>> $DRLog  
@@ -74,12 +74,12 @@ if ($ErrorOccured -eq 0) {
 }
 
 # Email results to I.T. department. Would need to be configured with company's SMPT machine:
-#if (ErrorOccured -eq 0) {
-    #Send-MailMessage -SmtpServer "<SMTP_SERVER>" -Port 25 -From "SQLServer@company.com" -To "ITSupport.company.com" `
-    #                 -Subject "** FAILED ** SQL Server Continuous DR Test" -Body $DRLog 
-#}
-#else {
-    #Send-MailMessage -SmtpServer "<SMTP_SERVER>" -Port 25 -From "SQLServer@company.com" -To "ITSupport.company.com" `
-    #                 -Subject "** SUCCESSFUL ** SQL Server Disaster DR Test" -Body "Automated disaster recovery test was successful"
-#}
+if (ErrorOccured -eq 1) {
+    Send-MailMessage -SmtpServer "<SMTP_SERVER>" -Port 25 -From "SQLServer@company.com" -To "ITSupport.company.com" `
+                     -Subject "** FAILED ** SQL Server Continuous DR Test" -Body $DRLog 
+}
+else {
+    Send-MailMessage -SmtpServer "<SMTP_SERVER>" -Port 25 -From "SQLServer@company.com" -To "ITSupport.company.com" `
+                     -Subject "** SUCCESSFUL ** SQL Server Disaster DR Test" -Body $DRLog
+}
 
